@@ -18,10 +18,10 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 class Spider
 {
 
-    //从1688商品详情中获取规格筛选参数
-    public static function detail1688($link){
+    //
+    public static function detail(){
 
-        $cookie = 'Cookie: PHPSESSID=63rctgfkis1pk00sovaoh3oct4';
+        $cookie = 'Cookie: ';
         $options = [];
         if($cookie){
             $options[] = $cookie;
@@ -108,115 +108,6 @@ class Spider
 
     }
 
-    //从1688订单列表中获取下游订单对应关系对照对象
-    /**
-     * 从1688订单列表中获取下游订单对应关系对照对象
-     * [
-     *    [20200922172434122623] => 1265800861275134650
-     *    [20200918125448514759] => 1262684487865134650
-     * ]
-     */
-    public static function orderlist1688($startDate='', $startHour='', $startMinute='', $endDate='', $endHour='', $endMinute='', $page=1){
-        $link = "https://trade.1688.com/order/buyer_order_list.htm?scene_type=&source=&product_name=&start_date={$startDate}&start_hour={$startHour}&start_minute={$startMinute}&end_date={$endDate}&end_hour={$endHour}&end_minute={$endMinute}&seller_login_id=&trade_status=&trade_type_search=&biz_type_search=&order_id_search=&is_his=&is_hidden_canceled_offer=&apt=&related_code=&order_settle_flag=&company_name=&keywords=&receiver_tel=&receiver_name=&buyer_name=&down_stream_order_id=&batch_number=&total_fee=&page={$page}";
-        
-        $key = 'http1688cookie';
 
-        $cache = \Yii::$app->redis;
-        $cookie = $cache->get($key);
-        
-        $options = [];
-        if($cookie){
-            $options[] = $cookie;
-        }
-        $text = Http::get($link, null, $options);
-        $text = iconv("gbk","utf-8", $text);
-
-        //获取SKU json
-        if(preg_match_all('%data-order-id="([0-9]+)"%', $text, $info)){
-            $bizOrderList = [];
-            foreach($info[1] as $orderId){
-                $biz = self::orderdetail1688($orderId);
-                if($biz){
-                    $order = ['orderid'=>$orderId];
-                    if(isset($biz['logisticsid'])){
-                        $order['logisticsid'] = $biz['logisticsid'];
-                    }
-                    if(isset($biz['companyName'])){
-                        $order['companyName'] = $biz['companyName'];
-                    }
-                    if(isset($biz['billno'])){
-                        $order['billno'] = $biz['billno'];
-                    }
-                    $bizOrderList[$biz['orderid']] = $order;
-                }
-            }
-            return $bizOrderList;
-        }
-        return false;
-    }
-
-    //从1688订单详情中获取下游订单号
-    public static function orderdetail1688($orderId=''){
-        $link = "https://trade.1688.com/order/new_step_order_detail.htm?orderId={$orderId}";
-        
-        $key = 'http1688cookie';
-        $cache = \Yii::$app->redis;
-        $cookie = $cache->get($key);
-        
-
-        $options = [];
-        if($cookie){
-            $options[] = $cookie;
-        }
-        $text = Http::get($link, null, $options);
-        $text = iconv("gbk","utf-8", $text);
-
-        $startText = '<li>下游订单号：';
-        $endText = '</li>';
-        $start = mb_strpos($text, $startText);
-        if($start > 0){
-            $start = $start + mb_strlen($startText);
-            $end = mb_strpos($text, $endText, $start);
-            if($end > $start){
-                $biz = ['orderid'=>trim(mb_substr($text, $start, $end-$start))];
-
-                $startText = 'data-logisticsid="';
-                $endText = '"';
-                $start = mb_strpos($text, $startText);
-                if($start > 0){
-                    $start = $start + mb_strlen($startText);
-                    $end = mb_strpos($text, $endText, $start);
-                    if($end > $start){
-                        $biz['logisticsid'] = trim(mb_substr($text, $start, $end-$start));                        
-                    }
-                }
-                
-                $startText = 'data-billno="';
-                $endText = '"';
-                $start = mb_strpos($text, $startText);
-                if($start > 0){
-                    $start = $start + mb_strlen($startText);
-                    $end = mb_strpos($text, $endText, $start);
-                    if($end > $start){
-                        $biz['billno'] = trim(mb_substr($text, $start, $end-$start));                        
-                    }
-                }
-                
-                $startText = 'data-companyName="';
-                $endText = '"';
-                $start = mb_strpos($text, $startText);
-                if($start > 0){
-                    $start = $start + mb_strlen($startText);
-                    $end = mb_strpos($text, $endText, $start);
-                    if($end > $start){
-                        $biz['companyName'] = trim(mb_substr($text, $start, $end-$start));                        
-                    }
-                }
-
-                return $biz;
-            }
-        }
-        return false;
-    }
 
 }
